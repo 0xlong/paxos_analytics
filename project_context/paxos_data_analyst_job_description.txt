@@ -1,0 +1,33 @@
+About Paxos
+Today’s financial infrastructure is archaic, expensive, inefficient and risky — supporting a system that leaves out more people than it lets in. So we’re rebuilding it.
+We’re on a mission to open the world’s financial system to everyone by enabling the instant movement of any asset, any time, in a trustworthy way. 
+For over a decade, we’ve built blockchain infrastructure that tokenizes, custodies, trades and settles assets for the world’s leading financial institutions, like Mastercard, Visa, Robinhood, and PayPal.
+
+About the team
+The Analytics team is at the center of data-driven decision making at Paxos. 
+We are a dedicated group of analysts and data professionals who transform raw data into insights that guide our product, operations, risk, and commercial strategies. 
+Our team is passionate about building trustworthy metrics, intuitive dashboards, and clear analyses that help stakeholders move faster and with more confidence. 
+We partner closely with teams across the company, leveraging deep understanding of our business and products to solve complex problems and unlock new opportunities through data.
+
+About the role
+As a Data Analyst at Paxos, you will own analytics for Paxos stablecoins and rewards initiatives. 
+You will combine strong SQL, dashboarding, and analytical skills with a product mindset to help teams make better decisions, design smarter incentives, and meet our regulatory and reporting obligations. 
+You’ll work closely with Product, Engineering, Finance, and Account Management to turn complex data into clear, actionable insights in a lean, high‑ownership environment
+
+What you’ll do
++ Own the analytics for Paxos-issued tokens and Rewards as a product, including defining core metrics, building dashboards, and creating analyses that inform product, rewards, and network strategy.
++ Translate ambiguous business questions from Product, Engineering, Finance, and Account Management into well‑scoped data problems and deliver clear, decision‑ready outputs (dashboards, analyses, memos, reports).
++ Partner with the data engineering team and cross-functional stakeholders to shape and improve the underlying data models in Snowflake and dbt, ensuring the stablecoin and rewards domains are well‑modeled, trusted, and documented.
++ Use AI‑powered tooling (e.g., Snowflake native AI, Cortex, Claude/Claude Code, Streamlit apps) to accelerate analysis, improve model quality, and prototype new analytics workflows.
++ Contribute to regulatory reporting, audits, and exam requests as part of the team’s BAU responsibilities, ensuring accuracy, consistency, and timely delivery.
+
+About you
++ 2-5 years of experience in data and analytics roles (e.g., Data Analyst, Analytics Engineer, Technical Product Analyst), ideally in a product or financial/fintech environment.
++ Advanced SQL proficiency, including querying large, complex datasets and reasoning about data model design - not just editing or copy‑pasting existing queries.
++ Hands-on dashboarding and data visualization experience with tools such as Looker, Metabase, or Tableau, including designing new dashboards and metric frameworks rather than only maintaining existing ones.
++ Strong analytical and quantitative skills, with practical experience in metrics development, data modeling concepts, and basic statistics, working on top of a modern warehouse + modeling stack (e.g., Snowflake + dbt or equivalent).
++ Comfort with Git-based workflows for managing analytics code and assets (SQL, dbt models, dashboard definitions), including branching, pull requests, code review, and CI/CD in the data stack.
++ Demonstrated ability to leverage AI in analytics workflows, ideally including Snowflake-native AI (e.g., Cortex), Claude Code, and Streamlit apps to “vibe code” dashboards or accelerate analysis and modeling work.
++ Excellent written and verbal communication skills, with the ability to explain complex technical and quantitative concepts to non-technical stakeholders and tailor messaging to product, engineering, finance, and account management audiences.
++ Strong stakeholder and requirements-gathering skills: able to collect, challenge, and distill business needs into clear, actionable deliverables (dashboards, analyses, reports), including regulatory reporting, audit, and exam requests as part of BAU work.
++ A growth mindset and high adaptability: eager to learn, comfortable with ambiguity, and willing to experiment with new tools and approaches (including AI), rather than being rigid or “set in your ways.”

@@ -1,0 +1,23 @@
+# PYUSD Intelligence Report — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Data extraction
+requests>=2.31.0
+
+# Data processing & storage
+pandas>=2.1.0
+pyarrow>=14.0.0
+
+# Database
+duckdb>=0.10.0
+
+# dbt (transformation layer)
+dbt-core>=1.7.0
+dbt-duckdb>=1.7.0
+
+# Dashboard
+streamlit>=1.30.0
+plotly>=5.18.0
+
+# Utilities
+python-dotenv>=1.0.0
