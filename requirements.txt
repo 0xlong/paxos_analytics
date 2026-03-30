@@ -19,5 +19,8 @@ dbt-duckdb>=1.7.0
 streamlit>=1.30.0
 plotly>=5.18.0
 
+# AI / LLM
+google-genai>=1.0.0
+
 # Utilities
 python-dotenv>=1.0.0

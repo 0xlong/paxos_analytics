@@ -73,7 +73,7 @@ pg = st.navigation([
     st.Page("pages/1_supply_adoption.py", title="Supply & Adoption", icon="📈", default=True),
     st.Page("pages/2_who_holds_pyusd.py", title="Ecosystem & Wallets", icon="🏦"),
     st.Page("pages/3_health_compliance.py", title="Health & Compliance", icon="🛡️"),
-    st.Page("pages/4_ask_ai.py", title="Ask AI", icon="🤖")
+    st.Page("pages/4_ai_report.py", title="AI Report", icon="🤖")
 ])
 
 pg.run()

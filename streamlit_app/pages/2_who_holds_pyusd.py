@@ -25,9 +25,7 @@ if conn is None:
 
 st.title("Wallet Concentration & Ecosystem Engagement")
 st.markdown("""
-Investigating PYUSD holder concentration and whale dominance.
-
-- *How concentrated is PYUSD, and is distribution improving or worsening?*
+Investigating PYUSD holder concentration and whale dominance - how concentrated is PYUSD, and is distribution improving or worsening?
 """)
 
 try:
@@ -71,8 +69,8 @@ try:
         hhi = np.sum(shares ** 2)
 
         kpi_card_row([
-            {"title": "Top 10 Share", "value": f"{top10_pct:.1f}%", "subvalue": "Of total supply"},
-            {"title": "Top 50 Share", "value": f"{top50_pct:.1f}%", "subvalue": "Of total supply"},
+            {"title": "Top 10 Share", "value": f"{top10_pct:.1f}%", "subvalue": "of total supply"},
+            {"title": "Top 50 Share", "value": f"{top50_pct:.1f}%", "subvalue": "of total supply"},
             {"title": "Gini Coefficient", "value": f"{gini:.4f}", "subvalue": "0 = equal, 1 = concentrated"},
             {"title": "HHI Index", "value": f"{hhi:.0f}", "subvalue": "Market concentration index"}
         ])

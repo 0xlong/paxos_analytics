@@ -24,10 +24,7 @@ if conn is None:
 
 st.title("Health & Regulatory Compliance")
 st.markdown("""
-Surveillance of large transactions and aggregate behavior monitoring.
-
-- *What does PYUSD's large transaction activity look like for regulatory monitoring?*
-- *Who is using PYUSD — institutions or retail? When is it most active?*
+Analysis of large transactions and aggregate behavior monitoring - how PYUSD's large transactions look and who uses PYUSD (institutions or retail)?
 """)
 
 try:

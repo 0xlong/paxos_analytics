@@ -55,7 +55,7 @@ try:
     if latest is not None:
         val1 = float(latest['running_total_supply'])
         wow = latest['supply_growth_wow_pct']
-        delta_str = f"{float(wow):.2f}% WoW" if pd.notna(wow) else "N/A"
+        delta_str = f"{float(wow):.2f}% Week-over-Week" if pd.notna(wow) else "N/A"
         
         val2 = float(latest['rolling_7d_avg_net_change']) / 1e6 if pd.notna(latest['rolling_7d_avg_net_change']) else 0
         
@@ -103,7 +103,7 @@ try:
     #st.subheader("Supply Growth (Week-over-Week %)")
     df_wow = df_supply[df_supply['supply_growth_wow_pct'].notna()]
     if not df_wow.empty:
-        fig_wow = create_line_chart(df_wow, 'transfer_date', 'supply_growth_wow_pct', "WoW Supply Growth %", color_discrete_sequence=[COLORS["secondary"]])
+        fig_wow = create_line_chart(df_wow, 'transfer_date', 'supply_growth_wow_pct', "Week-over-Week Supply Growth %", color_discrete_sequence=[COLORS["secondary"]])
         fig_wow.add_hline(y=0, line_dash="dot", line_color="gray")
         st.plotly_chart(fig_wow, width="stretch")
 
@@ -114,8 +114,11 @@ try:
     # Top labeled wallets table
     st.markdown('<div style="font-family: Roboto, sans-serif; color: #334155; font-size: 15px; font-weight: bold; margin-bottom: 12px;">Top 20 Labeled Wallets</div>', unsafe_allow_html=True)
     top_wallets = df_wallets.sort_values('current_balance', ascending=False).head(20)
+    display_df = top_wallets[['wallet_address', 'wallet_label', 'wallet_tier', 'current_balance', 'total_tx_count', 'account_age_days']].copy()
+    display_df['current_balance'] = display_df['current_balance'].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else x)
+
     st.dataframe(
-        top_wallets[['wallet_address', 'wallet_label', 'wallet_tier', 'current_balance', 'total_tx_count', 'account_age_days']],
+        display_df,
         width="stretch",
         hide_index=True
     )
