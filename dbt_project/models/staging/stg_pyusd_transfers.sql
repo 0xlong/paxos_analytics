@@ -35,7 +35,7 @@ renamed as (
 
         -- ── Block / Chain position ───────────────────────────────────────────
         cast(block_number as bigint)                    as block_number,
-        cast(timestamp    as timestamptz)               as block_timestamp,
+        cast(timestamp    as timestamp_tz)               as block_timestamp,
         cast(transfer_date as date)                     as transfer_date,
 
         -- ── Transaction identifiers ──────────────────────────────────────────

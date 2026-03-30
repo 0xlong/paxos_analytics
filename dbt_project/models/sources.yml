@@ -8,8 +8,8 @@
 version: 2
 
 sources:
-  - name: pyusd                          # Logical grouping name (used in {{ source('pyusd', 'raw_pyusd_transfers') }})
-    schema: main                          # Table lives in DuckDB's 'main' schema, not a schema called 'pyusd'
+  - name: pyusd                                                             # Logical grouping name (used in {{ source('pyusd', 'raw_pyusd_transfers') }})
+    schema: "{{ 'main' if target.type == 'duckdb' else 'PUBLIC' }}"         # Table lives in DuckDB's 'main' schema, not a schema called 'pyusd'
     description: "Raw PYUSD transfer events loaded from decoded Etherscan logs"
     tables:
       - name: raw_pyusd_transfers        # Must match the exact table name in DuckDB

@@ -11,3 +11,14 @@ pyusd_analytics:                     # Must match 'profile' name (defaults to pr
       type: duckdb                   # Use the dbt-duckdb adapter
       path: ../data/duckdb/pyusd_analytics.duckdb   # Relative path from this file to the DB
       threads: 4                     # Parallel model builds (DuckDB handles concurrency well)
+
+    snowflake:
+          type: snowflake
+          account: UJVMLEB-QY66318         # ← REPLACE with YOUR account from Step 4a
+          user: JANEK               # ← REPLACE with your Snowflake login username
+          password: EsMZ4qgUrCreC4Q           # ← REPLACE with your Snowflake login password
+          role: ACCOUNTADMIN                # Default role on free trial
+          database: PYUSD_ANALYTICS         # The database you created in Step 1
+          warehouse: PYUSD_WH              # The warehouse you created in Step 1
+          schema: PUBLIC                    # Default schema
+          threads: 4

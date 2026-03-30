@@ -109,7 +109,7 @@ select
     -- Account age in days (null for wallets that only exist in starting balances)
     case 
         when first_active_at is not null and last_active_at is not null
-        then date_diff('day', cast(first_active_at as date), cast(last_active_at as date))
+        then datediff('day', cast(first_active_at as date), cast(last_active_at as date))
         else null
     end as account_age_days
 from combined
