@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: int_daily_transfer_summary
+    description: "Daily aggregates of PYUSD transfer counts and volumes split by transfer type."
+    columns:
+      - name: transfer_date
+        tests:
+          - not_null
+      - name: transfer_type
+        tests:
+          - not_null
+      - name: daily_tx_count
+        tests:
+          - not_null
+      - name: daily_volume_pyusd
+        tests:
+          - not_null
+
+  - name: int_supply_changes
+    description: "Tracks the daily circulating supply of PYUSD via a running total of mints minus burns."
+    columns:
+      - name: transfer_date
+        tests:
+          - unique
+          - not_null
+      - name: running_total_supply
+        tests:
+          - not_null
+
+  - name: int_wallet_activity
+    description: "Lifetime statistics grouped by wallet address (sent, received, total counts, appx balance)."
+    columns:
+      - name: wallet_address
+        tests:
+          - unique
+          - not_null
+      - name: total_tx_count
+        tests:
+          - not_null

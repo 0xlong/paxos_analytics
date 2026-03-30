@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: stg_pyusd_transfers
+    description: >
+      Cleaned, renamed, and typed PYUSD ERC-20 Transfer events.
+      One row = one on-chain Transfer event log.
+      No aggregation or business logic — pure cleaning layer.
+
+    # ── Column-level tests are the contract this model makes with downstream ──
+    columns:
+
+      - name: transfer_id
+        description: "Surrogate key: md5(tx_hash || log_index). Globally unique per transfer event."
+        tests:
+          - unique             # Every row must be distinct
+          - not_null           # No row may be missing an ID
+
+      - name: block_number
+        description: "Ethereum block number. Monotonically increasing; useful for time ordering."
+        tests:
+          - not_null
+
+      - name: block_timestamp
+        description: "UTC timestamp of the block. Source of truth for time-series analysis."
+        tests:
+          - not_null
+
+      - name: transfer_date
+        description: "Date component of block_timestamp (UTC). Used for daily roll-ups."
+        tests:
+          - not_null
+
+      - name: tx_hash
+        description: "Ethereum transaction hash (0x-prefixed, 66 chars)."
+        tests:
+          - not_null
+
+      - name: log_index
+        description: "Position of this Transfer event within its transaction. Combined with tx_hash = unique event."
+        tests:
+          - not_null
+
+      - name: from_address
+        description: "Sender address (lowercased). 0x000...0000 indicates a mint."
+        tests:
+          - not_null
+
+      - name: to_address
+        description: "Receiver address (lowercased). 0x000...0000 indicates a burn."
+        tests:
+          - not_null
+
+      - name: amount_pyusd
+        description: "Human-readable PYUSD amount (6 decimals already applied). 0.0 is valid for some protocol ops."
+        tests:
+          - not_null
+
+      - name: is_mint
+        description: "True when from_address is the zero address (new supply entering circulation)."
+        tests:
+          - not_null
+
+      - name: is_burn
+        description: "True when to_address is the zero address (supply being destroyed)."
+        tests:
+          - not_null
+
+      - name: transfer_type
+        description: "Human-readable label: 'mint', 'burn', or 'transfer'."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['mint', 'burn', 'transfer']

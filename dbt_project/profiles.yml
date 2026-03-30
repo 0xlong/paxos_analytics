@@ -1,0 +1,13 @@
+# =============================================================================
+# dbt Profile — tells dbt HOW to connect to the database
+# =============================================================================
+# In Postgres you'd put host/port/user/password here.
+# In DuckDB, the entire "connection" is just a file path.
+
+pyusd_analytics:                     # Must match 'profile' name (defaults to project name)
+  target: dev                        # Active environment (dev vs prod)
+  outputs:
+    dev:
+      type: duckdb                   # Use the dbt-duckdb adapter
+      path: ../data/duckdb/pyusd_analytics.duckdb   # Relative path from this file to the DB
+      threads: 4                     # Parallel model builds (DuckDB handles concurrency well)

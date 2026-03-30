@@ -60,4 +60,7 @@ desktop.ini
 # Misc
 # ========================
 *.log
+*.md
 .antigravityignore
+project_context/
+data/

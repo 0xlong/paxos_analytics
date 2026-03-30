@@ -1,0 +1,63 @@
+version: 2
+
+models:
+
+  # ── FACT: Daily Supply ──────────────────────────────────────────────────
+  - name: fct_daily_supply_metrics
+    description: "Daily supply metrics with 7d rolling averages and WoW growth %."
+    columns:
+      - name: transfer_date
+        tests:
+          - unique
+          - not_null
+      - name: running_total_supply
+        tests:
+          - not_null
+
+  # ── FACT: Daily Transfer Metrics ────────────────────────────────────────
+  - name: fct_daily_transfer_metrics
+    description: "Daily transfer volume, count, velocity, broken out by type."
+    columns:
+      - name: transfer_date
+        tests:
+          - unique
+          - not_null
+      - name: total_tx_count
+        tests:
+          - not_null
+
+  # ── FACT: Large Transactions ────────────────────────────────────────────
+  - name: fct_large_transactions
+    description: "All transfers >= 100K PYUSD with sender/receiver labels for compliance monitoring."
+    columns:
+      - name: transfer_id
+        tests:
+          - unique
+          - not_null
+      - name: amount_pyusd
+        tests:
+          - not_null
+
+  # ── FACT: Wallet Concentration ──────────────────────────────────────────
+  - name: fct_wallet_concentration
+    description: "Snapshot ranking of all wallets with positive balance, tier classification, and share %."
+    columns:
+      - name: wallet_address
+        tests:
+          - unique
+          - not_null
+      - name: balance_rank
+        tests:
+          - not_null
+
+  # ── DIMENSION: Wallets ──────────────────────────────────────────────────
+  - name: dim_wallets
+    description: "Master wallet dimension with labels, tiers, and lifetime activity stats."
+    columns:
+      - name: wallet_address
+        tests:
+          - unique
+          - not_null
+      - name: wallet_label
+        tests:
+          - not_null

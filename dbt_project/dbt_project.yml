@@ -1,0 +1,38 @@
+# =============================================================================
+# dbt Project Config — the "manifest" that tells dbt what this project is
+# =============================================================================
+
+name: 'pyusd_analytics'           # Project identifier (used in {{ ref() }} calls)
+version: '1.0.0'
+config-version: 2                  # Required: tells dbt which config schema to use
+profile: 'pyusd_analytics'         # Tells dbt which profile to use in profiles.yml
+
+# --- Where to find things ---
+model-paths: ["models"]            # SQL models live here
+seed-paths: ["seeds"]              # CSV seed files live here
+test-paths: ["tests"]              # Custom data tests live here
+macro-paths: ["macros"]            # Reusable SQL macros live here
+
+# --- How to materialize models by default ---
+# "view" = fast, no storage cost, re-runs the SQL each time you query
+# "table" = stores results physically, faster reads but slower builds
+models:
+  pyusd_analytics:
+    staging:
+      +materialized: view          # Staging = lightweight cleaning, views are fine
+    intermediate:
+      +materialized: view          # Intermediate = business logic, still views
+    marts:
+      +materialized: table         # Marts = final analytics tables, materialized for dashboard speed
+
+# --- Seed column type overrides ---
+# By default dbt guesses types. We force addresses to be VARCHAR so they
+# don't get truncated or misinterpreted as numbers.
+seeds:
+  pyusd_analytics:
+    +column_types:
+      address: varchar
+    starting_balances:
+      +column_types:
+        address: varchar
+        balance: double
