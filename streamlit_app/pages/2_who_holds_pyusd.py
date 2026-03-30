@@ -24,7 +24,11 @@ if conn is None:
     st.stop()
 
 st.title("Wallet Concentration & Ecosystem Engagement")
-st.markdown("Investigating PYUSD holder concentration and whale dominance.")
+st.markdown("""
+Investigating PYUSD holder concentration and whale dominance.
+
+- *How concentrated is PYUSD, and is distribution improving or worsening?*
+""")
 
 try:
     # =========================================================================
@@ -43,8 +47,6 @@ try:
     df_wallets = conn.execute("SELECT * FROM dim_wallets WHERE current_balance > 0 ORDER BY current_balance DESC").df()
 
     st.markdown("---")
-    st.subheader("Analysis 3: Wallet Concentration & Whale Tracking")
-    st.caption("*\"How concentrated is PYUSD, and is distribution improving or worsening?\"*")
 
     # --- KPIs ---
     if not df_conc.empty:
@@ -78,7 +80,7 @@ try:
     st.markdown("---")
 
     # --- Concentration bar chart (top 20 wallets) ---
-    st.subheader("Top 20 Wallets by Balance")
+    #st.subheader("Top 20 Wallets by Balance")
     top20 = df_conc.head(20).copy()
     # Merge labels
     labels = conn.execute("SELECT wallet_address, wallet_label FROM dim_wallets").df()
@@ -91,11 +93,17 @@ try:
     fig_top20.update_layout(xaxis_title="Wallet", yaxis_title="Share %", xaxis_tickangle=-45)
     st.plotly_chart(fig_top20, width="stretch")
 
+    st.markdown("---")
+    #st.subheader("Wallet Tier Distribution")
+
     # --- Tier distribution ---
     df_tiers = df_conc.groupby('wallet_tier').agg(
         wallet_count=('wallet_address', 'count'),
         total_balance=('balance', 'sum')
     ).reset_index()
+    
+    df_tiers['count_pct'] = (df_tiers['wallet_count'] / df_tiers['wallet_count'].sum()) * 100
+    df_tiers['balance_pct'] = (df_tiers['total_balance'] / df_tiers['total_balance'].sum()) * 100
 
     ccol1, ccol2 = st.columns([2, 1])
     
@@ -108,14 +116,15 @@ try:
     with ccol2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         st.dataframe(
-            df_tiers.sort_values('wallet_count', ascending=False)[['wallet_tier', 'wallet_count']],
+            df_tiers.sort_values('wallet_count', ascending=False)[['wallet_tier', 'wallet_count', 'count_pct']],
             width="stretch",
             hide_index=True,
             column_config={
-                "wallet_count": st.column_config.NumberColumn(format="%,.0f")
+                "wallet_count": st.column_config.NumberColumn(format="%,.0f"),
+                "count_pct": st.column_config.NumberColumn("% of All", format="%.2f%%")
             }
         )
-
+    st.markdown("---")
     bcol1, bcol2 = st.columns([2, 1])
 
     with bcol1:
@@ -127,16 +136,20 @@ try:
     with bcol2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         st.dataframe(
-            df_tiers.sort_values('total_balance', ascending=False)[['wallet_tier', 'total_balance']],
+            df_tiers.sort_values('total_balance', ascending=False)[['wallet_tier', 'total_balance', 'balance_pct']],
             width="stretch",
             hide_index=True,
             column_config={
-                "total_balance": st.column_config.NumberColumn(format="%,.0f")
+                "total_balance": st.column_config.NumberColumn(format="%,.0f"),
+                "balance_pct": st.column_config.NumberColumn("% of All", format="%.2f%%")
             }
         )
 
+    st.markdown("---")
+
     # --- Full ranked table ---
-    st.subheader("Full Concentration Table")
+    st.markdown('<div style="font-family: Roboto, sans-serif; color: #334155; font-size: 17px; font-weight: bold; margin-bottom: 12px;">Full Concentration Table</div>', unsafe_allow_html=True)
+
     display_df = df_conc.merge(labels, on='wallet_address', how='left')
     st.dataframe(
         display_df[['balance_rank', 'wallet_address', 'wallet_label', 'balance', 'share_pct', 'wallet_tier', 'total_tx_count']].head(100),

@@ -4,7 +4,10 @@
 -- PURPOSE: Track the total circulating supply of PYUSD over time.
 -- We do this by calculating the daily net change (mints - burns) and
 -- maintaining a running total using a window function.
-{% set initial_supply = 21265524714464
+-- initial_supply = PYUSD circulating supply just before our dataset starts (2025-10-01).
+-- Value is in human-readable units (already divided by 10^6), matching amount_pyusd.
+-- Derived: live_supply(2,905,663,277) − net_mints_in_dataset(1,031,837,220) = 1,873,826,057
+{% set initial_supply = 1873826057 %}
 with daily_mints_burns as (
 
     select

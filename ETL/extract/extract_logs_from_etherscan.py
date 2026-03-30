@@ -1,8 +1,20 @@
 """
-pyUSD Transfer Log Extraction
-==============================
-Fetches raw ERC-20 Transfer event logs for the pyUSD contract
-from Etherscan and saves to CSV. No decoding — raw hex output.
+pyUSD Transfer Log Extraction — v2 (gap-free)
+===============================================
+Fixes the data-gap bug in v1 by using **adaptive chunk splitting**.
+
+Problem in v1:
+  - 50,000-block chunks can contain more Transfer events than the
+    Etherscan API will return (page limit × offset cap).
+  - When a chunk overflows, the tail of the chunk is silently lost,
+    creating regular ~5-day gaps in the dataset.
+
+Fix:
+  - Start with a smaller default chunk (5,000 blocks ≈ 16 hours).
+  - If any single page returns exactly `offset` rows (meaning there
+    *might* be more), we still paginate — but if the total for the
+    chunk hits a safety ceiling we **split the chunk in half** and
+    recurse, guaranteeing every log is captured.
 """
 
 import json
@@ -26,9 +38,18 @@ from config import (
 )
 
 
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+DEFAULT_CHUNK_SIZE  = 5_000   # blocks per chunk (~16 h) — down from 50k
+PAGE_OFFSET         = 1_000   # rows per page (Etherscan max)
+MAX_LOGS_PER_CHUNK  = 9_000   # safety ceiling before we split
+MIN_CHUNK_SIZE      = 100     # never split below this
+
 
 # =============================================================================
-# SESSION (reuse TCP connection)
+# SESSION
 # =============================================================================
 
 session = requests.Session()
@@ -57,11 +78,18 @@ def get_block_by_date(date_str, closest="before"):
 
 
 # =============================================================================
-# EXTRACTION
+# EXTRACTION — single chunk with pagination
 # =============================================================================
 
-def get_logs_for_range(address, topic0, from_block, to_block, max_retries=3):
-    """Fetch logs for a block range with pagination (max 10k per range)."""
+def _fetch_chunk(address, topic0, from_block, to_block, max_retries=3):
+    """
+    Fetch logs for a single block range, paginating through all pages.
+
+    Returns (logs, hit_ceiling):
+      - logs: list of raw log dicts
+      - hit_ceiling: True if the total count reached MAX_LOGS_PER_CHUNK,
+        signaling the caller should split this range.
+    """
     logs = []
     page = 1
 
@@ -75,10 +103,12 @@ def get_logs_for_range(address, topic0, from_block, to_block, max_retries=3):
             "fromBlock": from_block,
             "toBlock": to_block,
             "page": page,
-            "offset": 1000,
+            "offset": PAGE_OFFSET,
             "apikey": ETHERSCAN_API_KEY,
         }
 
+        # --- retry loop ---
+        data = None
         for attempt in range(max_retries):
             try:
                 response = session.get(ETHERSCAN_URL, params=params, timeout=30)
@@ -91,12 +121,16 @@ def get_logs_for_range(address, topic0, from_block, to_block, max_retries=3):
                     time.sleep(wait)
                 else:
                     print(f"   ❌ Failed after {max_retries} retries: {e}")
-                    return logs
+                    return logs, False
 
+        if data is None:
+            return logs, False
+
+        # --- handle API response ---
         if data.get("status") != "1":
             result = data.get("result", "")
             if "No records found" not in str(result) and result:
-                print(f"   ⚠️ API: {result}")
+                print(f"   ⚠️  API: {result}")
             break
 
         batch = data.get("result", [])
@@ -105,32 +139,75 @@ def get_logs_for_range(address, topic0, from_block, to_block, max_retries=3):
 
         logs.extend(batch)
 
-        if len(batch) < 1000:
+        # Safety: if we've accumulated too many logs, abort and signal split
+        if len(logs) >= MAX_LOGS_PER_CHUNK:
+            return logs, True          # <-- hit ceiling → caller will split
+
+        # All rows for this page received; if fewer than offset, we're done
+        if len(batch) < PAGE_OFFSET:
             break
 
         page += 1
         time.sleep(REQUEST_DELAY)
 
+    return logs, False
+
+
+# =============================================================================
+# EXTRACTION — adaptive splitting
+# =============================================================================
+
+def fetch_logs_adaptive(address, topic0, from_block, to_block, depth=0):
+    """
+    Fetch logs for [from_block, to_block].
+    If the range returns too many results, split it in half and recurse.
+    """
+    indent = "  " * depth
+    span = to_block - from_block + 1
+
+    logs, hit_ceiling = _fetch_chunk(address, topic0, from_block, to_block)
+
+    if hit_ceiling and span > MIN_CHUNK_SIZE:
+        # Range is too dense — split in half
+        mid = from_block + span // 2
+        print(f"{indent}🔀 Splitting {from_block:,}–{to_block:,} "
+              f"(got {len(logs):,} logs, splitting at {mid:,})")
+
+        left  = fetch_logs_adaptive(address, topic0, from_block, mid - 1, depth + 1)
+        time.sleep(REQUEST_DELAY)
+        right = fetch_logs_adaptive(address, topic0, mid, to_block, depth + 1)
+        return left + right
+
     return logs
 
 
-def get_all_logs(address, topic0, from_block, to_block, chunk_size=50000):
-    """Fetch ALL logs by splitting into block-range chunks."""
+# =============================================================================
+# MAIN LOOP — iterate through chunks
+# =============================================================================
+
+def get_all_logs(address, topic0, from_block, to_block,
+                 chunk_size=DEFAULT_CHUNK_SIZE):
+    """Fetch ALL logs by walking through block-range chunks with adaptive splitting."""
     all_logs = []
     current = from_block
     chunk_num = 1
+    total_chunks = (to_block - from_block) // chunk_size + 1
 
     print(f"📥 Fetching Transfer logs for {address[:10]}...")
-    print(f"   Blocks: {from_block:,} → {to_block:,}")
-    print(f"   Chunk size: {chunk_size:,} blocks")
+    print(f"   Blocks : {from_block:,} → {to_block:,}")
+    print(f"   Chunk  : {chunk_size:,} blocks  (~{total_chunks} chunks)")
+    print()
 
     while current <= to_block:
         chunk_end = min(current + chunk_size - 1, to_block)
 
-        print(f"\n📦 Chunk {chunk_num}: {current:,} → {chunk_end:,}")
-        chunk_logs = get_logs_for_range(address, topic0, current, chunk_end)
+        print(f"📦 Chunk {chunk_num}/{total_chunks}: "
+              f"{current:,} → {chunk_end:,}", end="")
+
+        chunk_logs = fetch_logs_adaptive(address, topic0, current, chunk_end)
         all_logs.extend(chunk_logs)
-        print(f"   Got {len(chunk_logs):,} logs (total: {len(all_logs):,})")
+
+        print(f"  ✓ {len(chunk_logs):,} logs  (total: {len(all_logs):,})")
 
         current = chunk_end + 1
         chunk_num += 1
@@ -140,19 +217,24 @@ def get_all_logs(address, topic0, from_block, to_block, chunk_size=50000):
     return all_logs
 
 
+# =============================================================================
+# SAVE
+# =============================================================================
+
 def save_logs(logs, output_path):
     """Save raw logs to both JSONL and Parquet."""
     base = PROJECT_ROOT / Path(output_path).with_suffix("")
     base.parent.mkdir(parents=True, exist_ok=True)
 
-    # JSONL — human-readable, append-friendly, git-diffable
+    """# JSONL
     jsonl_path = base.with_suffix(".jsonl")
     with open(jsonl_path, "w", encoding="utf-8") as f:
         for log in logs:
             f.write(json.dumps(log) + "\n")
-    print(f"💾 JSONL  → {jsonl_path} ({len(logs):,} rows)")
-
-    # Parquet — compressed, typed, fast analytical reads
+    print(f"💾 JSONL   → {jsonl_path} ({len(logs):,} rows)")
+    """
+    
+    # Parquet
     parquet_path = base.with_suffix(".parquet")
     df = pd.DataFrame(logs)
     df.to_parquet(parquet_path, index=False, engine="pyarrow")
@@ -171,13 +253,13 @@ if __name__ == "__main__":
         print("❌ Set ETHERSCAN_API_KEY in .env!")
         exit(1)
 
-    print("🚀 pyUSD Transfer Log Extraction")
+    print("🚀 pyUSD Transfer Log Extraction — v2 (gap-free)")
     print("=" * 50)
 
     # Resolve date range → block numbers
     print(f"📅 {EXTRACTION_START_DATE} → {EXTRACTION_END_DATE}")
     start_block = get_block_by_date(EXTRACTION_START_DATE, closest="after")
-    end_block = get_block_by_date(EXTRACTION_END_DATE, closest="before")
+    end_block   = get_block_by_date(EXTRACTION_END_DATE,   closest="before")
     print(f"   Blocks: {start_block:,} → {end_block:,}")
 
     # Fetch all Transfer logs
@@ -193,4 +275,4 @@ if __name__ == "__main__":
         print(f"\n📄 Sample row:")
         print(df.iloc[0].to_dict())
     else:
-        print("⚠️ No logs found!")
+        print("⚠️  No logs found!")

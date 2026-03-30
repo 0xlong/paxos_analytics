@@ -23,7 +23,12 @@ if conn is None:
     st.stop()
 
 st.title("Health & Regulatory Compliance")
-st.markdown("Surveillance of large transactions and aggregate behavior monitoring.")
+st.markdown("""
+Surveillance of large transactions and aggregate behavior monitoring.
+
+- *What does PYUSD's large transaction activity look like for regulatory monitoring?*
+- *Who is using PYUSD — institutions or retail? When is it most active?*
+""")
 
 try:
     # =========================================================================
@@ -45,8 +50,6 @@ try:
     df_metrics = conn.execute("SELECT * FROM fct_daily_transfer_metrics ORDER BY transfer_date").df()
 
     st.markdown("---")
-    st.subheader("Analysis 5: Large Transaction Surveillance")
-    st.caption("*\"What does PYUSD's large transaction activity look like for regulatory monitoring?\"*")
 
     # --- KPIs ---
     count_100k = len(df_large[df_large['amount_pyusd'] >= 100000])
@@ -59,6 +62,7 @@ try:
         {"title": "> $10M Transfers", "value": f"{count_10m:,}", "subvalue": "Mega transactions"}
     ])
 
+    st.markdown("---")
     # --- Daily large tx count bar chart ---
     if not df_large.empty:
         df_daily_large = df_large.groupby('transfer_date').agg(
@@ -70,6 +74,8 @@ try:
                               color_discrete_sequence=[COLORS['warning']])
         st.plotly_chart(fig_lg_count, width="stretch")
 
+        st.markdown("---")
+
         # By size tier
         df_tier_daily = df_large.groupby(['transfer_date', 'size_tier']).size().reset_index(name='count')
         fig_tier = create_bar_chart(df_tier_daily, x='transfer_date', y='count', color='size_tier',
@@ -77,8 +83,11 @@ try:
                           color_discrete_sequence=[COLORS['tertiary'], COLORS['warning'], COLORS['danger']])
         st.plotly_chart(fig_tier, width="stretch")
 
+    st.markdown("---")
+
     # --- Top 20 largest transfers table ---
-    st.markdown("##### Top 20 Largest Transfers")
+    st.markdown('<div style="font-family: Roboto, sans-serif; color: #334155; font-size: 15px; font-weight: bold; margin-bottom: 15px;">Top 20 Largest Transfers</div>', unsafe_allow_html=True)
+
     top_transfers = df_large.sort_values(by='amount_pyusd', ascending=False).head(20)
     st.dataframe(
         top_transfers[['transfer_date', 'tx_hash', 'from_label', 'to_label', 'amount_pyusd', 'size_tier']],
@@ -86,8 +95,6 @@ try:
     )
 
     st.markdown("---")
-    st.subheader("Analysis 6: Transaction Behavior Patterns")
-    st.caption("*\"Who is using PYUSD — institutions or retail? When is it most active?\"*")
 
     # --- KPIs ---
     if not df_metrics.empty:
@@ -99,41 +106,18 @@ try:
             {"title": "Unique Senders", "value": f"{int(latest_m['unique_senders']):,}", "subvalue": "Latest day"},
             {"title": "Unique Receivers", "value": f"{int(latest_m['unique_receivers']):,}", "subvalue": "Latest day"}
         ])
-
+    
+    st.markdown("---")
     # --- Volume & Count Charts ---
     if not df_metrics.empty:
-        fig_vol = create_bar_chart(df_metrics, 'transfer_date', 'total_volume_pyusd', "Daily Transfer Volume (PYUSD)")
+        fig_vol = create_bar_chart(df_metrics, 'transfer_date', 'regular_volume', "Daily Transfer Volume (PYUSD)")
         st.plotly_chart(fig_vol, width="stretch")
 
     if not df_metrics.empty:
+        st.markdown("---")
         fig_count = create_bar_chart(df_metrics, 'transfer_date', 'total_tx_count', "Daily Transfer Count",
                                       color_discrete_sequence=[COLORS["tertiary"]])
         st.plotly_chart(fig_count, width="stretch")
-
-    # --- Transfer type breakdown ---
-    st.subheader("Volume Breakdown by Transfer Type")
-    if not df_metrics.empty:
-        df_type = df_metrics[['transfer_date', 'regular_volume', 'mint_volume', 'burn_volume']].copy()
-        df_melt = pd.melt(df_type, id_vars=['transfer_date'],
-                          value_vars=['regular_volume', 'mint_volume', 'burn_volume'],
-                          var_name='Type', value_name='Volume')
-        fig_type = create_bar_chart(df_melt, x='transfer_date', y='Volume', color='Type',
-                           title="Daily Volume by Transfer Type",
-                           barmode='stack',
-                           color_discrete_map={
-                               'regular_volume': COLORS['secondary'],
-                               'mint_volume': COLORS['tertiary'],
-                               'burn_volume': COLORS['danger']
-                           })
-        st.plotly_chart(fig_type, width="stretch")
-
-    # --- Velocity over time ---
-    st.subheader("Token Velocity Over Time")
-    if not df_metrics.empty:
-        df_vel = df_metrics[df_metrics['velocity'].notna()]
-        fig_vel = create_bar_chart(df_vel, 'transfer_date', 'velocity', "PYUSD Velocity (Volume ÷ Supply)",
-                                    color_discrete_sequence=[COLORS['primary']])
-        st.plotly_chart(fig_vel, width="stretch")
 
 except Exception as e:
     st.error(f"Error executing sql queries: {e}")

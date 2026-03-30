@@ -49,10 +49,10 @@ renamed as (
         lower(cast(to_address   as varchar))            as to_address,
 
         -- ── Token amount ─────────────────────────────────────────────────────
-        -- Already decoded to human-readable units (6 decimals applied in ETL).
+        -- The raw amount is in base units, so we apply 6 decimals here.
         -- Double precision is fine for analytics; use numeric/decimal only if
         -- you need exact financial arithmetic.
-        cast(amount as double)                          as amount_pyusd,
+        cast(amount as double) / 1000000.0              as amount_pyusd,
 
         -- ── Transfer type flags ──────────────────────────────────────────────
         cast(is_mint as boolean)                        as is_mint,

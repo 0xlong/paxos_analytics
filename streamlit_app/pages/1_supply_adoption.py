@@ -24,7 +24,10 @@ if conn is None:
     st.stop()
 
 st.title("Supply & Adoption Dynamics")
-st.markdown("Analyzing PYUSD's growth trajectory post-OCC trust charter.")
+st.markdown("""
+Analyzing PYUSD's growth trajectory post-OCC trust charter - Is PYUSD's post-OCC growth real and accelerating?
+""")
+st.markdown("---")
 
 try:
     df_supply = conn.execute("SELECT * FROM fct_daily_supply_metrics ORDER BY transfer_date").df()
@@ -50,27 +53,33 @@ try:
     latest = df_supply.iloc[-1] if not df_supply.empty else None
 
     if latest is not None:
-        val1 = float(latest['running_total_supply']) / 1e6
+        val1 = float(latest['running_total_supply'])
         wow = latest['supply_growth_wow_pct']
         delta_str = f"{float(wow):.2f}% WoW" if pd.notna(wow) else "N/A"
         
         val2 = float(latest['rolling_7d_avg_net_change']) / 1e6 if pd.notna(latest['rolling_7d_avg_net_change']) else 0
         
-        total_minted = float(df_supply['daily_minted_amount'].sum()) / 1e6
-        total_burned = float(df_supply['daily_burned_amount'].sum()) / 1e6
+        weekly_minted = float(df_supply.tail(7)['daily_minted_amount'].sum()) / 1e6
+        weekly_burned = float(df_supply.tail(7)['daily_burned_amount'].sum()) / 1e6
+        avg_7d_minted = weekly_minted / 7
+        avg_7d_burned = weekly_burned / 7
         
+        # Format supply: use B for billions, M for millions
+        if val1 >= 1e9:
+            supply_str = f"${val1 / 1e9:,.2f}B"
+        else:
+            supply_str = f"${val1 / 1e6:,.1f}M"
+
         kpi_card_row([
-            {"title": "Total Supply", "value": f"${val1:,.1f}M", "delta": delta_str},
+            {"title": "Total Supply", "value": supply_str, "subvalue": delta_str},
             {"title": "7D Avg Net Change", "value": f"${val2:,.2f}M", "subvalue": "Rolling 7-day average"},
             {"title": "Active Holders", "value": f"{total_holders:,}", "subvalue": "Wallets with balance > 0"},
-            {"title": "Period Mints / Burns", "value": f"${total_minted:,.0f}M / ${total_burned:,.0f}M", "subvalue": "Oct 2025 – Mar 2026"}
+            {"title": "7D Avg Mints / Burns", "value": f"${avg_7d_minted:,.1f}M / ${avg_7d_burned:,.1f}M", "subvalue": f"Total 7D: ${weekly_minted:,.0f}M / ${weekly_burned:,.0f}M"}
         ])
 
     st.markdown("---")
 
     # --- Row 2: Supply Charts ---
-    st.subheader("Analysis 1: Supply Dynamics")
-    st.caption("*\"Is PYUSD's post-OCC growth real and accelerating?\"*")
     if not df_supply.empty:
         fig_supply = create_area_chart(df_supply, 'transfer_date', 'running_total_supply', "PYUSD Total Supply Over Time")
         # OCC Charter annotation (avoid add_vline annotation_text bug)
@@ -81,14 +90,17 @@ try:
         st.plotly_chart(fig_supply, width="stretch")
 
     if not df_supply.empty:
+        st.markdown("---")
         df_supply['color'] = df_supply['daily_net_change'].apply(lambda x: 'Positive' if x >= 0 else 'Negative')
         fig_mints = create_bar_chart(df_supply, x='transfer_date', y='daily_net_change', title="Daily Net Change (Mints − Burns)", color='color',
                            color_discrete_map={'Positive': COLORS['tertiary'], 'Negative': COLORS['danger']})
         fig_mints.update_layout(showlegend=False)
         st.plotly_chart(fig_mints, width="stretch")
 
+    st.markdown("---")
+    
     # Supply growth WoW line
-    st.subheader("Supply Growth (Week-over-Week %)")
+    #st.subheader("Supply Growth (Week-over-Week %)")
     df_wow = df_supply[df_supply['supply_growth_wow_pct'].notna()]
     if not df_wow.empty:
         fig_wow = create_line_chart(df_wow, 'transfer_date', 'supply_growth_wow_pct', "WoW Supply Growth %", color_discrete_sequence=[COLORS["secondary"]])
@@ -98,15 +110,14 @@ try:
     st.markdown("---")
 
     # --- Row 3: Holder Distribution ---
-    st.subheader("Analysis 2: Holder Distribution")
-    st.caption("*\"Is adoption broadening, or are the same wallets recycling tokens?\"*")
 
     # Top labeled wallets table
-    st.subheader("Top 20 Labeled Wallets")
+    st.markdown('<div style="font-family: Roboto, sans-serif; color: #334155; font-size: 15px; font-weight: bold; margin-bottom: 12px;">Top 20 Labeled Wallets</div>', unsafe_allow_html=True)
     top_wallets = df_wallets.sort_values('current_balance', ascending=False).head(20)
     st.dataframe(
         top_wallets[['wallet_address', 'wallet_label', 'wallet_tier', 'current_balance', 'total_tx_count', 'account_age_days']],
-        width="stretch"
+        width="stretch",
+        hide_index=True
     )
 
 except Exception as e:
