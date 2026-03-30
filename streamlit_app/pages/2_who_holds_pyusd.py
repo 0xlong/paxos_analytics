@@ -92,32 +92,60 @@ try:
     st.plotly_chart(fig_top20, width="stretch")
 
     # --- Tier distribution ---
-    st.subheader("Wallet Tier Distribution")
-    tcol1, tcol2 = st.columns(2)
-
     df_tiers = df_conc.groupby('wallet_tier').agg(
         wallet_count=('wallet_address', 'count'),
         total_balance=('balance', 'sum')
     ).reset_index()
 
-    with tcol1:
+    ccol1, ccol2 = st.columns([2, 1])
+    
+    with ccol1:
         fig_tier_count = create_pie_chart(df_tiers, values='wallet_count', names='wallet_tier',
                                 title="Wallets by Tier (Count)",
                                 color_discrete_sequence=px.colors.sequential.Teal)
         st.plotly_chart(fig_tier_count, width="stretch")
 
-    with tcol2:
+    with ccol2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.dataframe(
+            df_tiers.sort_values('wallet_count', ascending=False)[['wallet_tier', 'wallet_count']],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "wallet_count": st.column_config.NumberColumn(format="%,.0f")
+            }
+        )
+
+    bcol1, bcol2 = st.columns([2, 1])
+
+    with bcol1:
         fig_tier_bal = create_pie_chart(df_tiers, values='total_balance', names='wallet_tier',
                               title="Balance by Tier (PYUSD)",
                               color_discrete_sequence=px.colors.sequential.Sunset)
         st.plotly_chart(fig_tier_bal, width="stretch")
+
+    with bcol2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.dataframe(
+            df_tiers.sort_values('total_balance', ascending=False)[['wallet_tier', 'total_balance']],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "total_balance": st.column_config.NumberColumn(format="%,.0f")
+            }
+        )
 
     # --- Full ranked table ---
     st.subheader("Full Concentration Table")
     display_df = df_conc.merge(labels, on='wallet_address', how='left')
     st.dataframe(
         display_df[['balance_rank', 'wallet_address', 'wallet_label', 'balance', 'share_pct', 'wallet_tier', 'total_tx_count']].head(100),
-        width="stretch"
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "balance": st.column_config.NumberColumn(format="%,.0f"),
+            "share_pct": st.column_config.NumberColumn(format="%.2f")
+        }
     )
 
 except Exception as e:

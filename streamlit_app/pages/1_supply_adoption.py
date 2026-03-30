@@ -71,25 +71,21 @@ try:
     # --- Row 2: Supply Charts ---
     st.subheader("Analysis 1: Supply Dynamics")
     st.caption("*\"Is PYUSD's post-OCC growth real and accelerating?\"*")
-    scol1, scol2 = st.columns(2)
+    if not df_supply.empty:
+        fig_supply = create_area_chart(df_supply, 'transfer_date', 'running_total_supply', "PYUSD Total Supply Over Time")
+        # OCC Charter annotation (avoid add_vline annotation_text bug)
+        fig_supply.add_shape(type="line", x0="2025-12-15", x1="2025-12-15", y0=0, y1=1, yref="paper",
+                             line=dict(color=COLORS["warning"], width=2, dash="dash"))
+        fig_supply.add_annotation(x="2025-12-15", y=1, yref="paper", text="OCC Charter",
+                                  showarrow=False, yanchor="bottom", font=dict(color=COLORS["warning"]))
+        st.plotly_chart(fig_supply, width="stretch")
 
-    with scol1:
-        if not df_supply.empty:
-            fig_supply = create_area_chart(df_supply, 'transfer_date', 'running_total_supply', "PYUSD Total Supply Over Time")
-            # OCC Charter annotation (avoid add_vline annotation_text bug)
-            fig_supply.add_shape(type="line", x0="2025-12-15", x1="2025-12-15", y0=0, y1=1, yref="paper",
-                                 line=dict(color=COLORS["warning"], width=2, dash="dash"))
-            fig_supply.add_annotation(x="2025-12-15", y=1, yref="paper", text="OCC Charter",
-                                      showarrow=False, yanchor="bottom", font=dict(color=COLORS["warning"]))
-            st.plotly_chart(fig_supply, width="stretch")
-
-    with scol2:
-        if not df_supply.empty:
-            df_supply['color'] = df_supply['daily_net_change'].apply(lambda x: 'Positive' if x >= 0 else 'Negative')
-            fig_mints = create_bar_chart(df_supply, x='transfer_date', y='daily_net_change', title="Daily Net Change (Mints − Burns)", color='color',
-                               color_discrete_map={'Positive': COLORS['tertiary'], 'Negative': COLORS['danger']})
-            fig_mints.update_layout(showlegend=False)
-            st.plotly_chart(fig_mints, width="stretch")
+    if not df_supply.empty:
+        df_supply['color'] = df_supply['daily_net_change'].apply(lambda x: 'Positive' if x >= 0 else 'Negative')
+        fig_mints = create_bar_chart(df_supply, x='transfer_date', y='daily_net_change', title="Daily Net Change (Mints − Burns)", color='color',
+                           color_discrete_map={'Positive': COLORS['tertiary'], 'Negative': COLORS['danger']})
+        fig_mints.update_layout(showlegend=False)
+        st.plotly_chart(fig_mints, width="stretch")
 
     # Supply growth WoW line
     st.subheader("Supply Growth (Week-over-Week %)")
@@ -104,21 +100,6 @@ try:
     # --- Row 3: Holder Distribution ---
     st.subheader("Analysis 2: Holder Distribution")
     st.caption("*\"Is adoption broadening, or are the same wallets recycling tokens?\"*")
-
-    hcol1, hcol2 = st.columns(2)
-    with hcol1:
-        df_tiers = df_wallets[df_wallets['current_balance'] > 0].groupby('wallet_tier').agg(
-            count=('wallet_address', 'count'),
-            total_balance=('current_balance', 'sum')
-        ).reset_index()
-        fig_pie = create_pie_chart(df_tiers, values='count', names='wallet_tier', title="Holder Count by Tier",
-                         color_discrete_sequence=px.colors.sequential.Teal)
-        st.plotly_chart(fig_pie, width="stretch")
-
-    with hcol2:
-        fig_bal = create_pie_chart(df_tiers, values='total_balance', names='wallet_tier', title="Balance Distribution by Tier",
-                         color_discrete_sequence=px.colors.sequential.Sunset)
-        st.plotly_chart(fig_bal, width="stretch")
 
     # Top labeled wallets table
     st.subheader("Top 20 Labeled Wallets")

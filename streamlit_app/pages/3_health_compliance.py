@@ -66,19 +66,16 @@ try:
             total_volume=('amount_pyusd', 'sum')
         ).reset_index()
 
-        lcol1, lcol2 = st.columns(2)
-        with lcol1:
-            fig_lg_count = create_bar_chart(df_daily_large, x='transfer_date', y='tx_count', title="Daily Large Transaction Count (>$100K)",
-                                  color_discrete_sequence=[COLORS['warning']])
-            st.plotly_chart(fig_lg_count, width="stretch")
+        fig_lg_count = create_bar_chart(df_daily_large, x='transfer_date', y='tx_count', title="Daily Large Transaction Count (>$100K)",
+                              color_discrete_sequence=[COLORS['warning']])
+        st.plotly_chart(fig_lg_count, width="stretch")
 
-        with lcol2:
-            # By size tier
-            df_tier_daily = df_large.groupby(['transfer_date', 'size_tier']).size().reset_index(name='count')
-            fig_tier = create_bar_chart(df_tier_daily, x='transfer_date', y='count', color='size_tier',
-                              title="Large Tx by Size Tier", barmode='stack',
-                              color_discrete_sequence=[COLORS['tertiary'], COLORS['warning'], COLORS['danger']])
-            st.plotly_chart(fig_tier, width="stretch")
+        # By size tier
+        df_tier_daily = df_large.groupby(['transfer_date', 'size_tier']).size().reset_index(name='count')
+        fig_tier = create_bar_chart(df_tier_daily, x='transfer_date', y='count', color='size_tier',
+                          title="Large Tx by Size Tier", barmode='stack',
+                          color_discrete_sequence=[COLORS['tertiary'], COLORS['warning'], COLORS['danger']])
+        st.plotly_chart(fig_tier, width="stretch")
 
     # --- Top 20 largest transfers table ---
     st.markdown("##### Top 20 Largest Transfers")
@@ -104,17 +101,14 @@ try:
         ])
 
     # --- Volume & Count Charts ---
-    vcol1, vcol2 = st.columns(2)
-    with vcol1:
-        if not df_metrics.empty:
-            fig_vol = create_line_chart(df_metrics, 'transfer_date', 'total_volume_pyusd', "Daily Transfer Volume (PYUSD)")
-            st.plotly_chart(fig_vol, width="stretch")
+    if not df_metrics.empty:
+        fig_vol = create_bar_chart(df_metrics, 'transfer_date', 'total_volume_pyusd', "Daily Transfer Volume (PYUSD)")
+        st.plotly_chart(fig_vol, width="stretch")
 
-    with vcol2:
-        if not df_metrics.empty:
-            fig_count = create_line_chart(df_metrics, 'transfer_date', 'total_tx_count', "Daily Transfer Count",
-                                          color_discrete_sequence=[COLORS["tertiary"]])
-            st.plotly_chart(fig_count, width="stretch")
+    if not df_metrics.empty:
+        fig_count = create_bar_chart(df_metrics, 'transfer_date', 'total_tx_count', "Daily Transfer Count",
+                                      color_discrete_sequence=[COLORS["tertiary"]])
+        st.plotly_chart(fig_count, width="stretch")
 
     # --- Transfer type breakdown ---
     st.subheader("Volume Breakdown by Transfer Type")
@@ -123,9 +117,10 @@ try:
         df_melt = pd.melt(df_type, id_vars=['transfer_date'],
                           value_vars=['regular_volume', 'mint_volume', 'burn_volume'],
                           var_name='Type', value_name='Volume')
-        fig_type = create_area_chart(df_melt, x='transfer_date', y='Volume', color_col='Type',
+        fig_type = create_bar_chart(df_melt, x='transfer_date', y='Volume', color='Type',
                            title="Daily Volume by Transfer Type",
-                           color_map={
+                           barmode='stack',
+                           color_discrete_map={
                                'regular_volume': COLORS['secondary'],
                                'mint_volume': COLORS['tertiary'],
                                'burn_volume': COLORS['danger']
@@ -136,7 +131,7 @@ try:
     st.subheader("Token Velocity Over Time")
     if not df_metrics.empty:
         df_vel = df_metrics[df_metrics['velocity'].notna()]
-        fig_vel = create_line_chart(df_vel, 'transfer_date', 'velocity', "PYUSD Velocity (Volume ÷ Supply)",
+        fig_vel = create_bar_chart(df_vel, 'transfer_date', 'velocity', "PYUSD Velocity (Volume ÷ Supply)",
                                     color_discrete_sequence=[COLORS['primary']])
         st.plotly_chart(fig_vel, width="stretch")
 
