@@ -12,6 +12,12 @@ Extracts raw blockchain data, transforms it through a modeled warehouse layer, a
 
 ---
 
+
+https://github.com/user-attachments/assets/1e6ac87e-d6f7-40c2-a064-17a2af2a0141
+
+
+---
+
 ## What This Project Does
 
 PYUSD is a dollar-backed stablecoin that sits at the center of PayPal's crypto strategy. Understanding its on-chain behavior — who holds it, how supply changes over time, and what large-value transfers look like — is critical for product teams, compliance functions, and business stakeholders working in the stablecoin space.
