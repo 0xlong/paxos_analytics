@@ -212,9 +212,9 @@ analytics_paxos/
 ### Prerequisites
 
 - Python 3.11+
-- An Etherscan API key ([get one free](https://etherscan.io/apis))
-- (Optional) Snowflake account for Cortex AI features
-- (Optional) Google Gemini API key for local AI reports
+- An Etherscan API key
+- Snowflake account for Cortex AI features
+- Google Gemini API key for local AI reports
 
 ### Setup
 

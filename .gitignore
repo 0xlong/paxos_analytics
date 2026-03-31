@@ -43,7 +43,7 @@ dbt_project/.user.yml
 # Streamlit
 # ========================
 .streamlit/secrets.toml
-
+.streamlit
 # ========================
 # IDE & OS
 # ========================
