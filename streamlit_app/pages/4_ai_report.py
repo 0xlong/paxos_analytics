@@ -6,7 +6,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import sys
-import time
 
 sys.path.append(str(Path(__file__).parent.parent))
 from components.kpi_card import kpi_card_row
@@ -17,7 +16,19 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ---------------------------------------------------------------------------
-# Database connection
+# Snowflake credentials (read from .env — never hardcode in prod)
+# ---------------------------------------------------------------------------
+SNOWFLAKE_ACCOUNT   = os.getenv("SNOWFLAKE_ACCOUNT")
+SNOWFLAKE_USER      = os.getenv("SNOWFLAKE_USER",       "JANEK")
+SNOWFLAKE_PASSWORD  = os.getenv("SNOWFLAKE_PASSWORD")
+SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE",  "PYUSD_WH")
+SNOWFLAKE_DATABASE  = os.getenv("SNOWFLAKE_DATABASE",   "PYUSD_ANALYTICS")
+SNOWFLAKE_SCHEMA    = os.getenv("SNOWFLAKE_SCHEMA",     "PUBLIC")
+SNOWFLAKE_ROLE      = os.getenv("SNOWFLAKE_ROLE",       "ACCOUNTADMIN")
+
+
+# ---------------------------------------------------------------------------
+# Database connection  (local DuckDB for the chart / KPI data)
 # ---------------------------------------------------------------------------
 @st.cache_resource
 def get_db_connection():
@@ -25,6 +36,27 @@ def get_db_connection():
     if not db_path.exists():
         return None
     return duckdb.connect(str(db_path), read_only=True)
+
+
+# ---------------------------------------------------------------------------
+# Snowflake connection  (for Cortex AI calls)
+# ---------------------------------------------------------------------------
+@st.cache_resource
+def get_snowflake_connection():
+    """Return a live Snowflake connector connection, cached for the session."""
+    import snowflake.connector
+    conn = snowflake.connector.connect(
+        account=SNOWFLAKE_ACCOUNT,
+        user=SNOWFLAKE_USER,
+        password=SNOWFLAKE_PASSWORD,
+        warehouse=SNOWFLAKE_WAREHOUSE,
+        database=SNOWFLAKE_DATABASE,
+        schema=SNOWFLAKE_SCHEMA,
+        role=SNOWFLAKE_ROLE,
+        # Disable telemetry — keeps it clean for a portfolio demo
+        client_session_keep_alive=True,
+    )
+    return conn
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +82,7 @@ def collect_report_data() -> dict:
     data["supply_latest"] = df_supply.iloc[0].to_dict() if not df_supply.empty else {}
     data["supply_7d_mint_total"] = float(df_supply["daily_minted_amount"].sum())
     data["supply_7d_burn_total"] = float(df_supply["daily_burned_amount"].sum())
-    data["supply_7d_net_avg"] = float(df_supply["daily_net_change"].mean())
+    data["supply_7d_net_avg"]    = float(df_supply["daily_net_change"].mean())
 
     # 2. Active holders
     data["active_holders"] = conn.execute(
@@ -62,8 +94,8 @@ def collect_report_data() -> dict:
         SELECT balance_rank, wallet_address, balance, share_pct, total_supply
         FROM fct_wallet_concentration ORDER BY balance_rank LIMIT 50
     """).df()
-    data["top10_share"] = float(df_conc.head(10)["share_pct"].sum())
-    data["top50_share"] = float(df_conc.head(50)["share_pct"].sum())
+    data["top10_share"]      = float(df_conc.head(10)["share_pct"].sum())
+    data["top50_share"]      = float(df_conc.head(50)["share_pct"].sum())
     data["total_supply_conc"] = float(df_conc["total_supply"].iloc[0]) if not df_conc.empty else 0
 
     # Gini coefficient
@@ -71,14 +103,14 @@ def collect_report_data() -> dict:
     n = len(balances)
     if n > 0:
         sorted_bal = np.sort(balances)
-        index = np.arange(1, n + 1)
+        index      = np.arange(1, n + 1)
         gini = (2 * np.sum(index * sorted_bal) / (n * np.sum(sorted_bal))) - (n + 1) / n
     else:
         gini = 0
     data["gini"] = float(gini)
 
     # HHI
-    all_conc = conn.execute("SELECT share_pct FROM fct_wallet_concentration").df()
+    all_conc    = conn.execute("SELECT share_pct FROM fct_wallet_concentration").df()
     data["hhi"] = float(np.sum(all_conc["share_pct"].values ** 2))
 
     # 4. Transfer metrics (latest 7 days)
@@ -91,12 +123,12 @@ def collect_report_data() -> dict:
         FROM fct_daily_transfer_metrics
         ORDER BY transfer_date DESC LIMIT 7
     """).df()
-    data["metrics_latest"] = df_metrics.iloc[0].to_dict() if not df_metrics.empty else {}
-    data["avg_daily_volume_7d"] = float(df_metrics["total_volume_pyusd"].mean()) if not df_metrics.empty else 0
-    data["avg_daily_tx_count_7d"] = float(df_metrics["total_tx_count"].mean()) if not df_metrics.empty else 0
-    data["avg_velocity_7d"] = float(df_metrics["velocity"].mean()) if not df_metrics.empty else 0
-    data["avg_unique_senders_7d"] = float(df_metrics["unique_senders"].mean()) if not df_metrics.empty else 0
-    data["avg_unique_receivers_7d"] = float(df_metrics["unique_receivers"].mean()) if not df_metrics.empty else 0
+    data["metrics_latest"]        = df_metrics.iloc[0].to_dict() if not df_metrics.empty else {}
+    data["avg_daily_volume_7d"]   = float(df_metrics["total_volume_pyusd"].mean())  if not df_metrics.empty else 0
+    data["avg_daily_tx_count_7d"] = float(df_metrics["total_tx_count"].mean())      if not df_metrics.empty else 0
+    data["avg_velocity_7d"]       = float(df_metrics["velocity"].mean())             if not df_metrics.empty else 0
+    data["avg_unique_senders_7d"] = float(df_metrics["unique_senders"].mean())      if not df_metrics.empty else 0
+    data["avg_unique_receivers_7d"] = float(df_metrics["unique_receivers"].mean())  if not df_metrics.empty else 0
 
     # 5. Large transaction summary
     df_large = conn.execute("""
@@ -107,8 +139,8 @@ def collect_report_data() -> dict:
         FROM fct_large_transactions
     """).df()
     data["large_gt_100k"] = int(df_large["gt_100k"].iloc[0])
-    data["large_gt_1m"] = int(df_large["gt_1m"].iloc[0])
-    data["large_gt_10m"] = int(df_large["gt_10m"].iloc[0])
+    data["large_gt_1m"]   = int(df_large["gt_1m"].iloc[0])
+    data["large_gt_10m"]  = int(df_large["gt_10m"].iloc[0])
 
     # 6. Top 5 wallets with labels
     df_top5 = conn.execute("""
@@ -131,8 +163,8 @@ def build_data_snapshot(data: dict) -> str:
     top5_lines = ""
     for w in data.get("top5_wallets", []):
         label = w.get("wallet_label", "Unknown")
-        addr = w.get("wallet_address", "")[:12] + "..."
-        name = label if label != "Unknown" else addr
+        addr  = w.get("wallet_address", "")[:12] + "..."
+        name  = label if label != "Unknown" else addr
         top5_lines += f"  #{w['balance_rank']}: {name} — {w['balance']:,.0f} PYUSD ({w['share_pct']:.1f}%)\n"
 
     snapshot = f"""
@@ -163,15 +195,15 @@ WALLET CONCENTRATION:
 TOP 5 HOLDERS:
 {top5_lines}
 LARGE TRANSACTIONS (full period):
-- Transfers > $100K: {data['large_gt_100k']:,}
-- Transfers > $1M: {data['large_gt_1m']:,}
-- Transfers > $10M: {data['large_gt_10m']:,}
+- Transfers >$100K: {data['large_gt_100k']:,}
+- Transfers >$1M: {data['large_gt_1m']:,}
+- Transfers >$10M: {data['large_gt_10m']:,}
 """
     return snapshot
 
 
 # ---------------------------------------------------------------------------
-# LLM report generation
+# Shared system prompt — used by BOTH engines
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """You are a senior blockchain analyst at Paxos writing a weekly business intelligence report on PYUSD (PayPal USD stablecoin).
 
@@ -194,13 +226,45 @@ Guidelines:
 - Do NOT fabricate data — only use what is provided"""
 
 
+# ---------------------------------------------------------------------------
+# Engine 1 — Snowflake Cortex  (AI runs INSIDE the data warehouse)
+# ---------------------------------------------------------------------------
+def generate_report_with_cortex(snapshot: str, model: str) -> str:
+    """
+    Send the prompt to Snowflake Cortex via a SQL call.
+    The AI runs natively inside Snowflake — data never leaves the warehouse.
+
+    """
+    conn = get_snowflake_connection()
+    cursor = conn.cursor()
+
+    # Build full prompt — escape single quotes so the SQL string is valid
+    full_prompt = f"{SYSTEM_PROMPT}\n\n---\n\n{snapshot}"
+
+    # Dollar-quoting ($$…$$) is the Snowflake best practice for embedding
+    # arbitrary text in SQL without quote-escaping headaches.
+    sql = f"""
+        SELECT SNOWFLAKE.CORTEX.COMPLETE(
+            '{model}',
+            $${full_prompt}$$
+        ) AS report
+    """
+
+    cursor.execute(sql)
+    result = cursor.fetchone()[0]
+    cursor.close()
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Engine 2 — Google Gemini  (external API, useful for local dev)
+# ---------------------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
 def generate_report_with_gemini(snapshot: str) -> str:
     """Call Gemini API and return the generated markdown report."""
     from google import genai
 
     client = genai.Client(api_key=GEMINI_API_KEY)
-
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=f"{SYSTEM_PROMPT}\n\n---\n\n{snapshot}",
@@ -211,74 +275,76 @@ def generate_report_with_gemini(snapshot: str) -> str:
 # ---------------------------------------------------------------------------
 # Page layout
 # ---------------------------------------------------------------------------
-st.title("🤖 AI PAXOS PyUSD Report")
-st.caption("Auto-generated business intelligence report powered byAI, based on live PYUSD on-chain data.")
-st.markdown("---")
+st.title("🤖 AI PYUSD Intelligence Report")
 
-# Collect data
+# ── Data collection ──────────────────────────────────────────────────────────
 data = collect_report_data()
 
 if data is None:
     st.error("Database connection failed. Please ensure the pipeline has run and DuckDB exists.")
     st.stop()
 
-# --- KPI row (quick glance before the full report) ---
-s = data.get("supply_latest", {})
-supply_val = s.get("running_total_supply", 0)
-if supply_val >= 1e9:
-    supply_str = f"${supply_val / 1e9:,.2f}B"
-else:
-    supply_str = f"${supply_val / 1e6:,.1f}M"
+st.markdown("---")
 
-wow = s.get("supply_growth_wow_pct", 0)
-wow_str = f"{wow:.2f}% WoW" if wow else "N/A"
+with st.expander("📋 Data for AI"):
+    st.code(build_data_snapshot(data), language="text")
 
-kpi_card_row([
-    {"title": "Total Supply", "value": supply_str, "subvalue": wow_str},
-    {"title": "Avg Daily Volume (7D)", "value": f"${data['avg_daily_volume_7d'] / 1e6:,.1f}M", "subvalue": f"{data['avg_daily_tx_count_7d']:,.0f} txs/day"},
-    {"title": "Active Holders", "value": f"{data['active_holders']:,}", "subvalue": f"Top 10 hold {data['top10_share']:.1f}%"},
-    {"title": "Token Velocity (7D)", "value": f"{data['avg_velocity_7d']:.4f}", "subvalue": "Volume / Supply ratio"},
-])
+
+# ── Engine segmented control + Generate button ───────────────────────────────
+cortex_model = "llama3.1-70b"
+
+columns = st.columns([1, 3])
+
+with columns[0]:
+    engine_options = ["❄️ Snowflake Cortex", "🔮 Google Gemini"]
+    selected_engine = st.pills(
+        "engine", 
+        options=engine_options, 
+        default="❄️ Snowflake Cortex",
+        label_visibility="collapsed",
+        selection_mode="single"
+    )
+    # If unselected, default to Cortex
+    if selected_engine is None:
+        selected_engine = "❄️ Snowflake Cortex"
+    
+use_cortex = (selected_engine == "❄️ Snowflake Cortex")
+
+with columns[1]:
+    generate_clicked = st.button("Generate Report", use_container_width=True, type="secondary")
 
 st.markdown("---")
 
-# --- Generate or display report ---
-if not GEMINI_API_KEY:
-    st.warning("⚠️ `GEMINI_API_KEY` not found in `.env` file. Showing data snapshot only.")
-    st.markdown("### 📋 Data Snapshot (LLM input)")
-    snapshot = build_data_snapshot(data)
-    st.code(snapshot, language="text")
-    st.info("Add `GEMINI_API_KEY=your_key_here` to your `.env` file to enable AI-generated reports.")
-else:
-    snapshot = build_data_snapshot(data)
+# ── Report Generation & Display ──────────────────────────────────────────────
+if "ai_report_md" not in st.session_state:
+    st.session_state["ai_report_md"] = None
+if "ai_report_engine" not in st.session_state:
+    st.session_state["ai_report_engine"] = None
 
-    if "ai_report_md" not in st.session_state:
+current_engine_key = "cortex" if use_cortex else "gemini"
+if st.session_state["ai_report_engine"] != current_engine_key:
+    st.session_state["ai_report_md"] = None
+    st.session_state["ai_report_engine"] = current_engine_key
+
+if generate_clicked:
+    snapshot = build_data_snapshot(data)
+    generate_report_with_gemini.clear()
+
+    try:
+        if use_cortex:
+            with st.spinner("Analyzing with Snowflake Cortex..."):
+                st.session_state["ai_report_md"] = generate_report_with_cortex(snapshot, cortex_model)
+        else:
+            if not GEMINI_API_KEY:
+                st.error("GEMINI_API_KEY not set in .env")
+            else:
+                with st.spinner("Analyzing with Google Gemini..."):
+                    st.session_state["ai_report_md"] = generate_report_with_gemini(snapshot)
+    except Exception as e:
+        st.error(f"Analysis failed: {e}")
         st.session_state["ai_report_md"] = None
 
-    col_btn, col_info = st.columns([1, 3])
-    with col_btn:
-        button_label = "🔄 Regenerate Report" if st.session_state["ai_report_md"] else "✨ Generate Report"
-        generate_clicked = st.button(button_label, type="primary")
-    with col_info:
-        st.caption("Click to generate a fresh AI analysis of the current data.")
+if st.session_state["ai_report_md"]:
+    st.markdown(st.session_state["ai_report_md"])
 
-    if generate_clicked:
-        # Clear the cache to force a fresh generation if clicked
-        generate_report_with_gemini.clear()
-        try:
-            with st.spinner("🧠 AI is analyzing your data and writing the report..."):
-                st.session_state["ai_report_md"] = generate_report_with_gemini(snapshot)
-        except Exception as e:
-            st.error(f"Failed to generate report: {e}")
-            st.session_state["ai_report_md"] = None
 
-    if st.session_state["ai_report_md"]:
-        st.markdown(st.session_state["ai_report_md"])
-
-        st.markdown("---")
-
-        # Expandable: show raw data snapshot sent to LLM
-        with st.expander("📋 View raw data snapshot sent to AI"):
-            st.code(snapshot, language="text")
-    else:
-        st.info("👈 Click the button above to generate the AI report.")

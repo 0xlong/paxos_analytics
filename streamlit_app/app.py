@@ -69,6 +69,7 @@ st.markdown("""
 
 # Define the navigation structure, default tab is now the first page 
 # and the old "App" landing page content is completely removed.
+st.title("PYUSD Analytics | Paxos")
 pg = st.navigation([
     st.Page("pages/1_supply_adoption.py", title="Supply & Adoption", icon="📈", default=True),
     st.Page("pages/2_who_holds_pyusd.py", title="Ecosystem & Wallets", icon="🏦"),
